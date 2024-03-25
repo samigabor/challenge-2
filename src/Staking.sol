@@ -7,21 +7,33 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+import "./IStaking.sol";
 
-    IERC20 public token;
-    mapping(address => uint256) private _balances;
+contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IStaking {
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+    mapping(address => bool) public tokens;
+    mapping(address token => mapping(address staker => uint256)) private _balances;
 
     event Staked(address indexed account, uint256 amount);
     event Unstaked(address indexed account, uint256 amount);
+
+    error Staking__ZeroNotAllowed();
+    error Staking__InsuficientBalance();
+    error Staking__NotRegistered(address token);
+
+    modifier onlyRegisteredToken(address token) {
+        if (!tokens[token]) revert Staking__NotRegistered(token);
+        _;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address defaultAdmin, address upgrader, address token_)
+    function initialize(address defaultAdmin, address upgrader)
         initializer public
     {
         __AccessControl_init();
@@ -29,8 +41,6 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(UPGRADER_ROLE, upgrader);
-
-        token = IERC20(token_);
     }
 
     function _authorizeUpgrade(address newImplementation)
@@ -39,24 +49,41 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
         override
     {}
 
-    function stake(uint256 amount) external {
-        require(amount > 0, "Amount must be greater than 0");
-        require(token.balanceOf(msg.sender) >= amount, "Insufficient balance");
-        
-        token.transferFrom(msg.sender, address(this), amount);
-        _balances[msg.sender] += amount;
+    function registerToken(address _token) external onlyRole(ADMIN_ROLE) {
+        tokens[_token] = true;
+    }
+
+    /**
+     * @dev Stake `amount` tokens from the caller.
+     * @param token The token to stake.
+     * @param amount The amount to stake.
+     */
+    function stake(address token, uint256 amount) external {
+        if (amount == 0) revert Staking__ZeroNotAllowed();
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        _balances[token][msg.sender] += amount;
         emit Staked(msg.sender, amount);
     }
 
-    function unstake(uint256 amount) external {
-        require(_balances[msg.sender] >= amount, "Insufficient staked balance");
-        
-        _balances[msg.sender] -= amount;
-        token.transfer(msg.sender, amount);
+    /**
+     * @dev Unstake `amount` tokens from the caller.
+     * @param token The token to unstake.
+     * @param amount The amount to unstake.
+     */
+    function unstake(address token, uint256 amount) external {
+        if (_balances[token][msg.sender] < amount) revert Staking__InsuficientBalance();
+        _balances[token][msg.sender] -= amount;
+        IERC20(token).transfer(msg.sender, amount);
         emit Unstaked(msg.sender, amount);
     }
 
-    function getStake(address account) external view returns (uint256) {
-        return _balances[account];
+    /**
+     * @dev Get the stake of a particular token for a given account
+     * @param token The token staked
+     * @param account The address of the staker
+     * @return The amount staked
+     */
+    function getStake(address token, address account) external view returns (uint256) {
+        return _balances[token][account];
     }
 }

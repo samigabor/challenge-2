@@ -8,3 +8,27 @@ Design an upgradeable smart contracts architecture to tackle this challenge. Con
 maintainability.
 
 Describe possible improvements. Eventually provide a diagram.
+
+## Improvements:
+
+- Allow vote updates if additional tokens have been staked
+- Consider gas optimization techniques to reduce transaction costs for users
+
+## Security Considerations:
+
+- Implemented access control mechanisms to restrict certain functions to authorized users.
+- Implemented checks to prevent double voting or fraudulent behavior.
+
+## Security risks
+
+- keys associated with the roles must be safely guarded, especially the DEFAULT_ADMIN_ROLE and UPGRADER_ROLE (e.g. multisig)
+
+## Maintainability
+
+- role based upgradeable system
+- responsibilities split accross different roles (e.g. upgradear, staking admin, survey creator)
+
+## Deployed on  Sepolia:
+
+- [Staking](https://sepolia.etherscan.io/address/0xB85a634b0cBbD363c6aEf53765658a75C7DCAAad#readProxyContract)
+- [Survey](https://sepolia.etherscan.io/address/0x2240A397Caf1686Da8C4251cDC14DD3802188EcD#readProxyContract)

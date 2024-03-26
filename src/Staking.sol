@@ -12,9 +12,11 @@ import "./IStaking.sol";
 contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IStaking {
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant LOCKER_ROLE = keccak256("LOCKER_ROLE");
 
     mapping(address => bool) public tokens;
-    mapping(address token => mapping(address staker => uint256)) private _balances;
+    mapping(address token => mapping(address staker => uint256)) private balances;
+    mapping(address token => mapping(address staker => uint256)) private lockedUntil;
 
     event Staked(address indexed account, uint256 amount);
     event Unstaked(address indexed account, uint256 amount);
@@ -22,6 +24,7 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IS
     error Staking__ZeroNotAllowed();
     error Staking__InsuficientBalance();
     error Staking__NotRegistered(address token);
+    error Staking__InvalidLockDate();
 
     modifier onlyRegisteredToken(address token) {
         if (!tokens[token]) revert Staking__NotRegistered(token);
@@ -49,41 +52,67 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IS
         override
     {}
 
-    function registerToken(address _token) external onlyRole(ADMIN_ROLE) {
-        tokens[_token] = true;
+    /**
+     * Whitelist a token for staking.
+     * @param token The token to register.
+     */
+    function registerToken(address token) external onlyRole(ADMIN_ROLE) {
+        tokens[token] = true;
     }
 
     /**
-     * @dev Stake `amount` tokens from the caller.
+     * Stake `amount` tokens from the caller.
      * @param token The token to stake.
      * @param amount The amount to stake.
      */
     function stake(address token, uint256 amount) external {
         if (amount == 0) revert Staking__ZeroNotAllowed();
+        balances[token][msg.sender] += amount;
         IERC20(token).transferFrom(msg.sender, address(this), amount);
-        _balances[token][msg.sender] += amount;
         emit Staked(msg.sender, amount);
     }
 
     /**
-     * @dev Unstake `amount` tokens from the caller.
+     * Unstake `amount` tokens for the caller.
      * @param token The token to unstake.
      * @param amount The amount to unstake.
      */
     function unstake(address token, uint256 amount) external {
-        if (_balances[token][msg.sender] < amount) revert Staking__InsuficientBalance();
-        _balances[token][msg.sender] -= amount;
+        if (balances[token][msg.sender] < amount) revert Staking__InsuficientBalance();
+        balances[token][msg.sender] -= amount;
         IERC20(token).transfer(msg.sender, amount);
         emit Unstaked(msg.sender, amount);
     }
 
     /**
-     * @dev Get the stake of a particular token for a given account
+     * Lock the stake of an account until a given date. Locking mechanism guards against double voting on a survey.
+     * Only Survey contract should have the LOCKER_ROLE.
+     * @param token The token to lock
+     * @param account The account to lock
+     * @param until The timestamp until the stake is locked
+     */
+    function lockStake(address token, address account, uint256 until) public onlyRole(LOCKER_ROLE) {
+        if (until < block.timestamp) revert Staking__InvalidLockDate();
+        lockedUntil[token][account] = until;
+    }
+
+    /**
+     * Check if the stake of an account is locked
+     * @param token The token to check
+     * @param account The account to check
+     * @return True if the stake is locked, false otherwise
+     */
+    function isStakeLocked(address token, address account) public view returns (bool) {
+        return lockedUntil[token][account] > block.timestamp;
+    }
+
+    /**
+     * Get the stake of a particular token for a given account
      * @param token The token staked
      * @param account The address of the staker
      * @return The amount staked
      */
-    function getStake(address token, address account) external view returns (uint256) {
-        return _balances[token][account];
+    function getStake(address token, address account) public view returns (uint256) {
+        return balances[token][account];
     }
 }

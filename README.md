@@ -1,4 +1,4 @@
-## Challenge 1:
+## Challenge 2:
 
 The company wants to create a platform where users could stake their tokens. This will allow users
 to participate in (vote) different Surveys. When a user stakes some amount of a particular token (ex: BAR) it
@@ -9,15 +9,18 @@ maintainability.
 
 Describe possible improvements. Eventually provide a diagram.
 
+![diagram](./diagram.jpg)
+
 ## Improvements:
 
+- Write tests with high coverage !!!
 - Allow vote updates if additional tokens have been staked
-- Consider gas optimization techniques to reduce transaction costs for users
+- UX improvements: integrate account abstraction (bundle approve + transferFrom; subsidize fees)
 
 ## Security Considerations:
 
-- Implemented access control mechanisms to restrict certain functions to authorized users.
-- Implemented checks to prevent double voting or fraudulent behavior.
+- Implemented access control mechanisms to restrict certain functions to authorized users
+- Implemented checks to prevent double voting
 
 ## Security risks
 
@@ -26,7 +29,7 @@ Describe possible improvements. Eventually provide a diagram.
 ## Maintainability
 
 - role based upgradeable system
-- responsibilities split accross different roles (e.g. upgradear, staking admin, survey creator)
+- responsibilities split accross different roles (e.g. upgradear, admin)
 
 ## Deployed on  Sepolia:
 

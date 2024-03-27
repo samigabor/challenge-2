@@ -13,7 +13,8 @@ import {HelperConfig} from "./HelperConfig.s.sol";
 /**
 forge script script/DeployContracts.s.sol \
     --rpc-url http://127.0.0.1:8545 \
-    --broadcast
+    --broadcast \
+    --tc DeployContracts
 
 forge script script/DeployContracts.s.sol \
     --rpc-url $RPC_URL_SEPOLIA \
@@ -103,7 +104,7 @@ contract DeployContracts is DeployScript {
     function _run() internal override create {
         Staking staking = new Staking();
         stakingImpl = address(staking);
-        stakingData = abi.encodeCall(staking.initialize, (deployerAddress, upgraderAddress));
+        stakingData = abi.encodeCall(staking.initialize, (deployerAddress, upgraderAddress, adminAddress));
 
         Survey survey = new Survey();
         surveyImpl = address(survey);

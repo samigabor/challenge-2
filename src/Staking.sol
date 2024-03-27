@@ -25,6 +25,7 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IS
     error Staking__InsuficientBalance();
     error Staking__NotRegistered(address token);
     error Staking__InvalidLockDate();
+    error Staking__LockedUntilSurveyExpiration();
 
     modifier onlyRegisteredToken(address token) {
         if (!tokens[token]) revert Staking__NotRegistered(token);
@@ -36,7 +37,7 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IS
         _disableInitializers();
     }
 
-    function initialize(address defaultAdmin, address upgrader)
+    function initialize(address defaultAdmin, address upgrader, address admin)
         initializer public
     {
         __AccessControl_init();
@@ -44,6 +45,7 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IS
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(UPGRADER_ROLE, upgrader);
+        _grantRole(ADMIN_ROLE, admin);
     }
 
     function _authorizeUpgrade(address newImplementation)
@@ -65,7 +67,7 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IS
      * @param token The token to stake.
      * @param amount The amount to stake.
      */
-    function stake(address token, uint256 amount) external {
+    function stake(address token, uint256 amount) external onlyRegisteredToken(token) {
         if (amount == 0) revert Staking__ZeroNotAllowed();
         balances[token][msg.sender] += amount;
         IERC20(token).transferFrom(msg.sender, address(this), amount);
@@ -79,6 +81,7 @@ contract Staking is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IS
      */
     function unstake(address token, uint256 amount) external {
         if (balances[token][msg.sender] < amount) revert Staking__InsuficientBalance();
+        if (isStakeLocked(token, msg.sender)) revert Staking__LockedUntilSurveyExpiration();
         balances[token][msg.sender] -= amount;
         IERC20(token).transfer(msg.sender, amount);
         emit Unstaked(msg.sender, amount);

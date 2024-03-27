@@ -19,7 +19,7 @@ contract Survey is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     }
 
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-    bytes32 public constant CREATOR_ROLE = keccak256("CREATOR_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     IStaking public stakingContract;
     mapping(uint256 => SurveyDetails) public surveys;
@@ -45,7 +45,7 @@ contract Survey is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(UPGRADER_ROLE, upgrader);
-        _grantRole(CREATOR_ROLE, admin);
+        _grantRole(ADMIN_ROLE, admin);
 
         stakingContract = IStaking(stakingContractAddress);
     }
@@ -63,7 +63,7 @@ contract Survey is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
      * @param expiration The date until voting for the survey is allowed.
      * @return The survey id.
      */
-    function create(address token, string memory question, uint256 expiration) external onlyRole(CREATOR_ROLE) returns (uint256) {
+    function create(address token, string memory question, uint256 expiration) external onlyRole(ADMIN_ROLE) returns (uint256) {
         uint256 count = ++surveyCount;
         surveys[count] = SurveyDetails({
             token: token,
